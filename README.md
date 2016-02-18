@@ -107,7 +107,25 @@ user IDs, obtained via your own HipChat API calls.
 
 By default, `hiplog` will save chat history to the directory `hiplogs`
 in the current directory. If that directory does not exist, it will be
-created with whatever your default `umask`
+created with default permissions. Logs will be saved to directories
+underneath it named by username, then in JSON files named by the date
+of the earliest item in that file:
+
+    hiplogs
+     ├──alice@example.com
+     │  ├──20140919T014318.json
+     │  └──20151013T205334.json
+     └──bob@example.com
+        ├──20150324T230614.json
+        ├──20150324T230902.json
+        ├──20150812T215405.json
+        ├──20151005T220915.json
+        ├──ZajifYh5KDgxtmS9i38K1A.upload.png
+        └──AlMb_11bTp24W1vY6z-8mA_IMG_0729.JPG
+
+The datestamped JSON files contain chat logs. Attachments are saved with
+the UUID from their original message, encoded via Base64 for URLs, and
+with their original filenames appended.
 
 Author
 ------
