@@ -52,7 +52,8 @@ Log in using your usual HipChat credentials, then create a new access
 token with at least *View Messages* privileges.
 
 An access token is typically a 40-character alphanumeric string. Pass
-the access token to `hiplog` using any of the following mechanisms:
+the access token to `hiplog` using any of the following mechanisms, in
+order of descending precedence:
 
 * Pass via command line with the `-t` (`--token`) option
 * Set as value of a `HIPCHAT_ACCESS_TOKEN` environment variable
@@ -91,17 +92,17 @@ Otherwise, to use `hiplog`, just copy it to any directory in your
   While running, print URLs and output filenames to *stderr*.
   The default is to run silently unless there is an error.
 
-* `-d`, `--output-dir`
-
-  Write logs into subdirectories of this output directory.
-  The default is a `hiplogs` directory in the current directory.
-  The output directory will be created if it does not already exist.
-
 * `-t`, `--token`
 
   Use this HipChat API access token. The default is to try to read
   an access token from the `HIPCHAT_ACCESS_TOKEN` environment variable,
   or the file `~/.hipchat_access_token`, respectively.
+
+* `-d`, `--output-dir`
+
+  Write logs into subdirectories of this output directory.
+  The default is a `hiplogs` directory in the current directory.
+  The output directory will be created if it does not already exist.
 
 Any other non-option arguments to `hiplog` are assumed to be HipChat
 user IDs (which may be usernames, like `alice@example.com`, or numeric
@@ -130,6 +131,11 @@ of the earliest item in that file:
 The datestamped JSON files contain chat logs. Attachments are saved with
 the UUID from their original message, encoded via Base64 for URLs, and
 with their original filenames appended.
+
+### Exit Status
+
+`hiplog` will return zero on success, non-zero with the number of errors
+recorded if there are errors.
 
 Author
 ------

@@ -34,41 +34,41 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 require 'optparse'
+require 'cgi'
+require 'uri'
 require 'net/http'
 require 'net/https'
-require 'uri'
-require 'cgi'
 require 'fileutils'
 
 require 'rubygems'
 require 'json'
 
 ME = File.basename($0)
-USAGE = "usage: #{ME} [-h] [-v] [-d dir] [-t token] user1 [user2 ...]\n"
+USAGE = "usage: #{ME} [-h] [-v] [-t token] [-d dir] user1 [user2 ...]\n"
 FULL_USAGE = USAGE + <<'end'
     -h           display this help text and exit
     -v           verbose mode, print URLs and filenames to stderr
-    -d dir       output directory (default hiplogs)
     -t token     HipChat access token (default read from environment or file)
+    -d dir       output directory (default hiplogs)
     user1 ...    list of users to archive HipChat private chats from
 end
 
 # Main loop, run at end of file
 def main(argv)
   verbose = false
-  output_dir = 'hiplogs'
   access_token = ENV['HIPCHAT_ACCESS_TOKEN'] || begin
     IO.read(File.join(ENV['HOME'], '.hipchat_access_token')).chomp
   rescue Errno::ENOENT, Errno::EACCES
   end
+  output_dir = 'hiplogs'
   users = []
 
   # Parse command line options
   OptionParser.new do |opts|
     opts.on('-h',       '--help')         { puts FULL_USAGE; exit 0 }
     opts.on('-v',       '--verbose')      { verbose = true }
-    opts.on('-d DIR',   '--output-dir')   { |s| output_dir = s }
     opts.on('-t TOKEN', '--access-token') { |s| access_token = s }
+    opts.on('-d DIR',   '--output-dir')   { |s| output_dir = s }
     begin
       opts.parse!(argv)
     rescue OptionParser::InvalidOption => e
@@ -168,13 +168,6 @@ end
 class Hash; def to_pjson; JSON.pretty_generate(self); end; end
 class Array; def to_pjson; JSON.pretty_generate(self); end; end
 
-module URI
-  # Mutate URI so that its query string has new name/value pair added
-  def add_param!(name, value)
-    self.query.add_param!(name, value)
-  end
-end
-
 class String
   # Return new query string with new name/value pair added
   def add_param(name, value)
@@ -209,6 +202,13 @@ class UUID
       pack('m0').               # bytes to Base64 without linefeeds
       tr('+/', '-_').           # standard Base64 to URL safe Base64
       sub(/=+\Z/, '')           # chomp trailing padding
+  end
+end
+
+module URI
+  # Mutate URI so that its query string has new name/value pair added
+  def add_param!(name, value)
+    self.query.add_param!(name, value)
   end
 end
 
