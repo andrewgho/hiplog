@@ -44,12 +44,12 @@ require 'rubygems'
 require 'json'
 
 ME = File.basename($0)
-USAGE = "usage: #{ME} [-h] [-v] [-d dir] -t token user1 [user2 ...]\n"
+USAGE = "usage: #{ME} [-h] [-v] [-d dir] [-t token] user1 [user2 ...]\n"
 FULL_USAGE = USAGE + <<'end'
     -h           display this help text and exit
     -v           verbose mode, print URLs and filenames to stderr
     -d dir       output directory (default hiplogs)
-    -t token     HipChat access token
+    -t token     HipChat access token (default read from environment or file)
     user1 ...    list of users to archive HipChat private chats from
 end
 
