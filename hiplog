@@ -56,6 +56,10 @@ end
 def main(argv)
   verbose = false
   output_dir = 'hiplogs'
+  access_token = ENV['HIPCHAT_ACCESS_TOKEN'] || begin
+    IO.read(File.join(ENV['HOME'], '.hipchat_access_token')).chomp
+  rescue Errno::ENOENT, Errno::EACCES
+  end
   users = []
 
   # Parse command line options
