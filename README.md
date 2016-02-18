@@ -65,11 +65,15 @@ on your `.hipchat_access_token` file).
 ### Installation
 
 `hiplog` requires Ruby, but any version should work—it has been tested
-with versions from REE (Ruby 1.8.7) to Ruby 2.2.3. The only dependency
-not already present in the Ruby standard library is the `json` gem. You
-can install this the normal way:
+with versions from REE (Ruby 1.8.7) to Ruby 2.2.4. The only dependency
+which might not be already present in the Ruby standard library is the
+`json` RubyGem. You can install this the normal way:
 
     $ gem install json
+
+Or, you can install it with [Bundler](http://bundler.io/):
+
+    $ bundle install
 
 Otherwise, to use `hiplog`, just copy it to any directory in your
 `$PATH`, or, just directly run `hiplog` from wherever you saved it.
