@@ -1,0 +1,179 @@
+#!/usr/bin/env ruby
+# hiplog - archive HipChat private chats to local disk
+# Andrew Ho (andrew@zeuscat.com)
+
+require 'optparse'
+require 'net/http'
+require 'uri'
+require 'cgi'
+require 'fileutils'
+
+require 'rubygems'
+require 'json'
+
+ME = File.basename($0)
+USAGE = "usage: #{ME} [-h] [-v] [-d dir] -t token user1 [user2 ...]\n"
+FULL_USAGE = USAGE + <<'end'
+    -h           display this help text and exit
+    -v           verbose mode, print URLs and filenames to stderr
+    -d dir       output directory (default hiplogs)
+    -t token     HipChat access token
+    user1 ...    list of users to archive HipChat private chats from
+end
+
+# Main loop, run at end of file
+def main(argv)
+  verbose = false
+  output_dir = 'hiplogs'
+  users = []
+
+  # Parse command line options
+  OptionParser.new do |opts|
+    opts.on('-h',       '--help')         { puts FULL_USAGE; exit 0 }
+    opts.on('-v',       '--verbose')      { verbose = true }
+    opts.on('-d DIR',   '--output-dir')   { |s| output_dir = s }
+    opts.on('-t TOKEN', '--access-token') { |s| access_token = s }
+    begin
+      opts.parse!(argv)
+    rescue OptionParser::InvalidOption => e
+      abort "#{ME}: #{e}\n#{USAGE}"
+    end
+  end
+  users.replace(argv)
+  abort "#{ME}: missing required access token\n#{USAGE}" unless access_token
+  abort "#{ME}: missing required list of users\n#{USAGE}" if users.empty?
+
+  # Fetch chat history items in batches of 100 until no items are returned
+  hiplog = HipLog.new(access_token)
+  hiplog.verbose! if verbose
+  num_errors = 0
+  users.each do |user|
+    num_items = 0
+    last_date = nil
+    while true
+      query = 'reverse=false&max-results=100'
+      query.add_param!(:date, last_date) if last_date  # first query has no date
+      response = hiplog.user_request("/history?#{query}", user)
+      if !response.is_a?(Hash)
+        abort "#{ME}: response is not a JSON object: #{response.to_pjson}"
+      elsif !response.key?('items')
+        abort "#{ME}: response does not contain items:\n#{response.to_pjson}"
+      elsif response['items'].empty?
+        if num_items == 0
+          $stderr.puts "#{ME}: no chat history found for user: #{user}"
+          num_errors += 1
+        end
+        break  # no more chat logs earlier than this date
+      end
+      last_date = response['items'][-1]['date']  # earliest date in this batch
+
+      # Output chat history to :output_dir/:user/:iso8601date.json
+      output_file = last_date.split(/\./).first.gsub(/[-:]/, '') + '.json'
+      output_path = File.join(output_dir, user, output_file)
+      $stderr.puts(output_path) if verbose
+      FileUtils.mkdir_p(File.dirname(output_path))
+      File.open(output_path, 'w') { |out| out.puts response.to_pjson }
+      num_items += response['items'].size
+
+      # TODO: go through JSON and fetch file attachments
+    end
+  end
+
+  num_errors
+end
+
+class HipLog
+  # Initialize HipLog with a HipChat API access token
+  def initialize(access_token)
+    @access_token = access_token
+    @verbose = false
+  end
+
+  # Turn on verbose mode (print URLs to stderr before fetching them)
+  def verbose!
+    @verbose = true
+  end
+
+  # Fetch request and parse as JSON, abort with errors if they occur
+  def request(uri_path)
+    uri = URI.parse(uri_path)
+    uri.scheme ||= 'https'
+    uri.host ||= 'api.hipchat.com'
+    uri.add_param!(:auth_token, @access_token)
+    $stderr.puts uri.to_s if @verbose
+    response = Net::HTTP.get_response(URI.parse(uri.to_s))
+    if response.is_a?(Net::HTTPSuccess)
+      body = response.body
+      abort "#{ME}: response body is empty:\n#{uri.to_s}" if body.empty?
+      begin
+        return JSON.parse(body)
+      rescue JSON::ParserError => e
+        abort "#{ME}: JSON parser error #{e}:\n#{uri.to_s}\n#{body.chomp}\n"
+      end
+    else
+      response.extend(HTTPResponseError)
+      abort "#{ME}: request returned error:\n#{uri.to_s}\n#{response.to_s}"
+    end
+  end
+
+  # Fetch /v2/user/:user based request
+  def user_request(uri_subpath, user = nil)
+    raise 'user not specified' unless user
+    request("/v2/user/#{CGI::escape(user)}#{uri_subpath}")
+  end
+end
+
+# Return object or list as pretty-printed JSON
+class Hash; def to_pjson; JSON.pretty_generate(self); end; end
+class Array; def to_pjson; JSON.pretty_generate(self); end; end
+
+module URI
+  # Mutate URI so that its query string has new name/value pair added
+  def add_param!(name, value)
+    self.query.add_param!(name, value)
+  end
+end
+
+class String
+  # Return new query string with new name/value pair added
+  def add_param(name, value)
+    params = CGI.parse(self)
+    if params.key?(name.to_s)
+      params[name.to_s] << value
+    else
+      params[name.to_s] = [value]
+    end
+    URI.encode_www_form(params)
+  end
+
+  # Mutate string into query string with new name/value pair added
+  def add_param!(name, value)
+    replace(add_param(name, value))
+  end
+end
+
+class UUID
+  # Convert standard hex-encoded UUID to filename safe Base64 encoded UUID
+  def self.hex2base64(hex_uuid)
+    hex_number = hex_uuid.gsub(/-/, '').downcase
+    [[hex_number].pack('H*')].  # hex digits to bytes
+      pack('m0').               # bytes to Base64 without linefeeds
+      tr('+/', '-_').           # standard Base64 to URL safe Base64
+      sub(/=+\Z/, '')           # chomp trailing padding
+  end
+end
+
+# HTTPResponseError adds error_response() for human-readable HTTP error
+module HTTPResponseError
+  def to_s
+    lines =
+      [ "HTTP/%s %s %s" % [ self.http_version, self.code, self.message ] ]
+    response.header.each_capitalized { |k, v| lines << "#{k}: #{v}" }
+    lines << ''
+    lines << response.body if response.body
+    lines.join("\015\012")
+  end
+end
+
+# If run from command line, run main loop and exit
+exit main(ARGV) if __FILE__ == $0
