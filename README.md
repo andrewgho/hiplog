@@ -10,7 +10,7 @@ used for accessing the
 Usage
 -----
 
-Get an HipChat API personal access token:
+Get an HipChat API personal access token with *View Messages* privileges:
 
 * https://groupon.hipchat.com/account/api
 
