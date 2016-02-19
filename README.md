@@ -13,7 +13,7 @@ Usage
 
 Get an HipChat API personal access token with *View Messages* privileges:
 
-* https://groupon.hipchat.com/account/api
+* https://www.hipchat.com/account/api
 
 Install the `hiplog` program into any directory in your `$PATH`. You
 will need any version of Ruby, and the `json` RubyGem.
@@ -37,7 +37,7 @@ back to the beginning of when the two of you began chatting.
 The supported mechanism for
 [exporting chat history](https://confluence.atlassian.com/display/HIPCHATKB/Exporting+chat+history)
 from HipChat requires administrative access. In contrast, `hiplog` uses a
-[personal API access token](https://groupon.hipchat.com/account/api).
+[personal API access token](https://www.hipchat.com/account/api).
 This means that administrative access is not required, but it also means
 that only private chats which are still accessible to your regular
 HipChat mobile or desktop client can be archived. You cannot, for
@@ -47,7 +47,7 @@ or get chat history for a user other than yourself.
 ### API Access Token
 
 To use `hiplog`, you will need to
-[generate a personal API access token](https://groupon.hipchat.com/account/api).
+[generate a personal API access token](https://www.hipchat.com/account/api).
 Log in using your usual HipChat credentials, then create a new access
 token with at least *View Messages* privileges.
 
