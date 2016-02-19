@@ -126,7 +126,7 @@ of the earliest item in that file:
         ├──20150812T215405.json
         ├──20151005T220915.json
         ├──ZajifYh5KDgxtmS9i38K1A.upload.png
-        └──AlMb_11bTp24W1vY6z-8mA_IMG_0729.JPG
+        └──AlMb_11bTp24W1vY6z-8mA.IMG_0729.JPG
 
 The datestamped JSON files contain chat logs. Attachments are saved with
 the UUID from their original message, encoded via Base64 for URLs, and
