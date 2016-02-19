@@ -76,8 +76,8 @@ Or, you can install it with [Bundler](http://bundler.io/):
 
     $ bundle install
 
-Otherwise, to use `hiplog`, just copy it to any directory in your
-`$PATH`, or, just directly run `hiplog` from wherever you saved it.
+To run `hiplog`, just copy it to any directory in your `$PATH`. Or, just
+directly run `hiplog` from wherever you saved it.
 
 ### Command Line Options
 
