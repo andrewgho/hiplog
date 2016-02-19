@@ -82,6 +82,7 @@ def main(argv)
   # Fetch chat history items in batches of 100 until no items are returned
   hiplog = HipLog.new(access_token)
   hiplog.verbose! if verbose
+  attachments = []
   num_errors = 0
   users.each do |user|
     num_items = 0
@@ -101,7 +102,8 @@ def main(argv)
         end
         break  # no more chat logs earlier than this date
       end
-      last_date = response['items'][-1]['date']  # earliest date in this batch
+      items = response['items']
+      last_date = items[-1]['date']  # earliest date in this batch
 
       # Output chat history to :output_dir/:user/:iso8601date.json
       output_file = last_date.split(/\./).first.gsub(/[-:]/, '') + '.json'
@@ -109,9 +111,35 @@ def main(argv)
       $stderr.puts(output_path) if verbose
       FileUtils.mkdir_p(File.dirname(output_path))
       File.open(output_path, 'w') { |out| out.puts response.to_pjson }
-      num_items += response['items'].size
+      num_items += items.size
 
-      # TODO: go through JSON and fetch file attachments
+      # Record file attachments to download after all chat logs are fetched
+      items.select { |item| item.key?("file") }.each do |item|
+        name, size, url = %w{name size url}.collect { |k| item["file"][k] }
+        uri = URI.parse(url)
+        output_file = "#{UUID.hex2base64(item['id'])}.#{name.tr('/', '_')}"
+        output_path = File.join(output_dir, user, output_file)
+        attachments << [uri, output_path]
+      end
+    end
+  end
+
+  # Download file attachments (done at end as this can be quite slow)
+  attachments.each do |(uri, output_path)|
+    $stderr.puts uri.to_s, output_path if verbose
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true if uri.scheme == 'https'
+    # TODO: use If-Modified-Since if non-zero sized local file already exists
+    http.request(Net::HTTP::Get.new(uri.request_uri)) do |response|
+      if response.is_a?(Net::HTTPSuccess)
+        File.open(output_path, 'w') do |out|
+          response.read_body { |chunk| out.print chunk }
+        end
+      else
+        response.extend(HTTPResponseError)
+        $stderr.puts "#{ME}: request returned error:\n#{uri}\n#{response}"
+        num_errors += 1
+      end
     end
   end
 
@@ -142,18 +170,22 @@ class HipLog
     $stderr.puts uri.to_s if @verbose
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true if uri.scheme == 'https'
-    response = http.request(Net::HTTP::Get.new(uri.request_uri))
+    begin
+      response = http.request(Net::HTTP::Get.new(uri.request_uri))
+    rescue Errno::ECONNREFUSED => e
+      abort "#{ME}: request error:\n#{uri}\n#{e}"
+    end
     if response.is_a?(Net::HTTPSuccess)
       body = response.body
-      abort "#{ME}: response body is empty:\n#{uri.to_s}" if body.empty?
+      abort "#{ME}: response body is empty:\n#{uri}" if body.empty?
       begin
         return JSON.parse(body)
       rescue JSON::ParserError => e
-        abort "#{ME}: JSON parser error #{e}:\n#{uri.to_s}\n#{body.chomp}\n"
+        abort "#{ME}: JSON parser error #{e}:\n#{uri}\n#{body.chomp}\n"
       end
     else
       response.extend(HTTPResponseError)
-      abort "#{ME}: request returned error:\n#{uri.to_s}\n#{response.to_s}"
+      abort "#{ME}: request returned error:\n#{uri}\n#{response}"
     end
   end
 
