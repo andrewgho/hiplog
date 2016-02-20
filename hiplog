@@ -85,6 +85,9 @@ def main(argv)
   attachments = []
   num_errors = 0
   users.each do |user|
+    # TODO: fetch user information and icon
+
+    # Fetch chat logs and save them to JSON files
     num_items = 0
     last_date = nil
     while true
@@ -115,9 +118,17 @@ def main(argv)
 
       # Record file attachments to download after all chat logs are fetched
       items.select { |item| item.key?("file") }.each do |item|
-        name, size, url = %w{name size url}.collect { |k| item["file"][k] }
+        name, size, thumb_url, url =
+          %w{name size thumb_url url}.collect { |k| item["file"][k] }
+        base64_uuid = UUID.hex2base64(item['id'])
+        if thumb_url
+          uri = URI.parse(thumb_url)
+          output_file = "#{base64_uuid}.#{File.basename(uri.request_uri)}"
+          output_path = File.join(output_dir, user, output_file)
+          attachments << [uri, output_path]
+        end
         uri = URI.parse(url)
-        output_file = "#{UUID.hex2base64(item['id'])}.#{name.tr('/', '_')}"
+        output_file = "#{base64_uuid}.#{File.basename(uri.request_uri)}"
         output_path = File.join(output_dir, user, output_file)
         attachments << [uri, output_path]
       end
